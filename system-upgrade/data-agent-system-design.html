@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DataAgent 系统设计假设</title>
+  <style>
+    :root {
+      --paper: #fbfcff;
+      --sheet: #ffffff;
+      --ink: #14213d;
+      --muted: #667085;
+      --soft: #eef3f8;
+      --line: #d9e2ec;
+      --blue: #276ef1;
+      --sky: #dbeaff;
+      --teal: #087f8c;
+      --teal-soft: #ddf5f2;
+      --amber: #b86b00;
+      --amber-soft: #fff0cf;
+      --rose: #b64b68;
+      --rose-soft: #fae7ee;
+      --green: #21895a;
+      --green-soft: #e1f6eb;
+      --violet: #6254c7;
+      --violet-soft: #eeebff;
+      --shadow: 0 20px 60px rgba(28, 42, 70, 0.08);
+      --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      --sans: Inter, "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      --serif: Georgia, "Times New Roman", "Songti SC", serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(39, 110, 241, 0.08), transparent 28rem),
+        linear-gradient(90deg, rgba(20, 33, 61, 0.045) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(20, 33, 61, 0.045) 1px, transparent 1px),
+        var(--paper);
+      background-size: auto, 36px 36px, 36px 36px;
+      font-family: var(--sans);
+      letter-spacing: 0;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .page {
+      min-height: 100vh;
+      width: min(1240px, calc(100% - 42px));
+      margin: 0 auto;
+      padding: 44px 0 56px;
+    }
+
+    .page-head {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 28px;
+      align-items: start;
+      margin-bottom: 30px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 18px;
+      color: var(--teal);
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 34px;
+      height: 2px;
+      background: var(--teal);
+    }
+
+    h1,
+    h2 {
+      margin: 0;
+      font-family: var(--serif);
+      font-weight: 700;
+      line-height: 1.02;
+    }
+
+    h1 {
+      max-width: 860px;
+      font-size: clamp(42px, 6vw, 82px);
+    }
+
+    h2 {
+      font-size: clamp(34px, 4vw, 56px);
+    }
+
+    h3 {
+      margin: 0;
+      font-size: 21px;
+      line-height: 1.28;
+    }
+
+    p {
+      margin: 0;
+    }
+
+    .summary {
+      max-width: 850px;
+      margin-top: 20px;
+      color: #455368;
+      font-size: 17px;
+      line-height: 1.85;
+    }
+
+    .page-index {
+      min-width: 108px;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.82);
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 800;
+      text-align: center;
+      box-shadow: 0 10px 28px rgba(28, 42, 70, 0.05);
+    }
+
+    .result-strip {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin: 28px 0 34px;
+    }
+
+    .metric {
+      min-height: 116px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.9);
+      box-shadow: 0 14px 36px rgba(28, 42, 70, 0.055);
+    }
+
+    .metric strong {
+      display: block;
+      margin-bottom: 10px;
+      color: var(--blue);
+      font-family: var(--mono);
+      font-size: 24px;
+      line-height: 1;
+    }
+
+    .metric span {
+      color: #3d4a5f;
+      font-size: 13px;
+      line-height: 1.65;
+    }
+
+    .flow-shell {
+      position: relative;
+      padding: 24px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.9);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .flow-shell::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(90deg, transparent 31px, rgba(217, 226, 236, 0.72) 32px, transparent 33px),
+        linear-gradient(180deg, transparent 31px, rgba(217, 226, 236, 0.72) 32px, transparent 33px);
+      background-size: 32px 32px;
+      pointer-events: none;
+    }
+
+    .flow-shell > * {
+      position: relative;
+      z-index: 1;
+    }
+
+    .flow-title {
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 18px;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .flow-grid {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: 14px;
+      align-items: stretch;
+    }
+
+    .node {
+      position: relative;
+      min-height: 132px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--sheet);
+      box-shadow: 0 12px 28px rgba(28, 42, 70, 0.055);
+    }
+
+    .node::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      right: -15px;
+      width: 15px;
+      height: 2px;
+      background: var(--blue);
+    }
+
+    .node:nth-child(4)::after,
+    .node:nth-child(8)::after,
+    .node:last-child::after {
+      display: none;
+    }
+
+    .node.main {
+      grid-column: span 3;
+    }
+
+    .node.wide {
+      grid-column: span 4;
+    }
+
+    .node.final {
+      grid-column: span 4;
+      border-color: rgba(33, 137, 90, 0.35);
+      background: linear-gradient(180deg, #ffffff, var(--green-soft));
+    }
+
+    .node small {
+      display: block;
+      margin-bottom: 10px;
+      color: var(--blue);
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .node strong {
+      display: block;
+      margin-bottom: 9px;
+      font-size: 17px;
+      line-height: 1.32;
+    }
+
+    .node span {
+      display: block;
+      color: #566276;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .lane {
+      display: grid;
+      grid-template-columns: 180px 1fr;
+      gap: 14px;
+      align-items: stretch;
+      margin-top: 14px;
+    }
+
+    .lane-label {
+      display: grid;
+      align-items: center;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #f7faff;
+      color: var(--blue);
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .lane-body {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 12px;
+    }
+
+    .tool {
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.94);
+    }
+
+    .tool strong {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 15px;
+    }
+
+    .tool span {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .section-lead {
+      max-width: 920px;
+      margin-top: 16px;
+      color: #455368;
+      font-size: 16px;
+      line-height: 1.8;
+    }
+
+    .module-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      margin-top: 28px;
+    }
+
+    .module {
+      padding: 22px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.92);
+      box-shadow: 0 16px 40px rgba(28, 42, 70, 0.055);
+    }
+
+    .module-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      align-items: flex-start;
+      margin-bottom: 16px;
+    }
+
+    .badge {
+      flex: 0 0 auto;
+      padding: 6px 9px;
+      border-radius: 999px;
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .badge.llm { color: var(--violet); background: var(--violet-soft); }
+    .badge.rule { color: var(--teal); background: var(--teal-soft); }
+    .badge.hybrid { color: var(--amber); background: var(--amber-soft); }
+    .badge.guard { color: var(--rose); background: var(--rose-soft); }
+
+    .result-line {
+      margin-bottom: 16px;
+      padding: 12px 14px;
+      border-left: 4px solid var(--blue);
+      border-radius: 6px;
+      background: #f4f8ff;
+      color: #31415b;
+      font-size: 14px;
+      line-height: 1.65;
+    }
+
+    .detail-list {
+      display: grid;
+      gap: 10px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .detail-list li {
+      display: grid;
+      grid-template-columns: 94px 1fr;
+      gap: 12px;
+      padding-top: 10px;
+      border-top: 1px solid var(--soft);
+      color: #344054;
+      font-size: 14px;
+      line-height: 1.65;
+    }
+
+    .detail-list b {
+      color: var(--ink);
+      font-family: var(--mono);
+      font-size: 12px;
+      text-transform: uppercase;
+    }
+
+    .wide-panel {
+      margin-top: 16px;
+      padding: 22px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.92);
+      box-shadow: 0 16px 40px rgba(28, 42, 70, 0.055);
+    }
+
+    .matrix {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    .matrix th,
+    .matrix td {
+      padding: 14px;
+      border-bottom: 1px solid var(--soft);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .matrix th {
+      color: #475467;
+      background: #f6f9fc;
+      font-family: var(--mono);
+      font-size: 11px;
+      text-transform: uppercase;
+    }
+
+    .matrix td {
+      color: #344054;
+      line-height: 1.65;
+      background: #fff;
+    }
+
+    .matrix tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .closing {
+      margin: 24px 0 8px;
+      padding: 20px;
+      border: 1px dashed #c5d0dc;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.76);
+      color: #475467;
+      font-size: 15px;
+      line-height: 1.75;
+    }
+
+    @media (max-width: 980px) {
+      .page-head,
+      .lane {
+        grid-template-columns: 1fr;
+      }
+
+      .result-strip,
+      .lane-body,
+      .module-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .node.main,
+      .node.wide,
+      .node.final {
+        grid-column: span 6;
+      }
+
+      .node:nth-child(2n)::after {
+        display: none;
+      }
+    }
+
+    @media (max-width: 680px) {
+      .page {
+        width: min(100% - 28px, 1240px);
+        padding-top: 30px;
+      }
+
+      .result-strip,
+      .lane-body,
+      .module-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .node.main,
+      .node.wide,
+      .node.final {
+        grid-column: span 12;
+      }
+
+      .node::after {
+        display: none;
+      }
+
+      .detail-list li {
+        grid-template-columns: 1fr;
+        gap: 4px;
+      }
+
+      .matrix {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="page" id="page-1">
+      <header class="page-head">
+        <div>
+          <div class="eyebrow">page 1 / architecture flow</div>
+          <h1>结果先行：做一个受控的可信问数闭环。</h1>
+          <p class="summary">
+            DataAgent 的核心不是让大模型直接写 SQL，而是用 LangGraph 编排 LLM 节点、规则节点和受控工具，让自然语言问题经过意图、口径、Schema、SQL、安全、成本、执行、验证和追溯，最终返回可解释的数据结果。
+          </p>
+        </div>
+        <a class="page-index" href="#page-2">看细节 ↓</a>
+      </header>
+
+      <div class="result-strip" aria-label="设计目标数据">
+        <div class="metric">
+          <strong>8</strong>
+          <span>第一版核心模块，覆盖从用户问题到结果追溯的主链路。</span>
+        </div>
+        <div class="metric">
+          <strong>1</strong>
+          <span>真实执行数据库限定 MySQL，避免校招生项目范围失控。</span>
+        </div>
+        <div class="metric">
+          <strong>2</strong>
+          <span>MySQL 做事实源与 Trace 主存，Milvus 只做语义召回层。</span>
+        </div>
+        <div class="metric">
+          <strong>10+</strong>
+          <span>评测场景覆盖歧义、多轮、JOIN、权限、慢查询和大结果。</span>
+        </div>
+      </div>
+
+      <section class="flow-shell" aria-label="DataAgent 主流程图">
+        <div class="flow-title">
+          <span>LangGraph state machine</span>
+          <span>LLM generates, rules guard</span>
+        </div>
+
+        <div class="flow-grid">
+          <div class="node main">
+            <small>input</small>
+            <strong>用户自然语言问题</strong>
+            <span>经营分析、图表、明细查询、多轮追问都从同一个入口进入。</span>
+          </div>
+          <div class="node main">
+            <small>intent</small>
+            <strong>意图解析与澄清门</strong>
+            <span>输出 AnalysisSpec；关键槽位缺失时先澄清，不急着写 SQL。</span>
+          </div>
+          <div class="node main">
+            <small>metric</small>
+            <strong>指标口径解析</strong>
+            <span>对齐 GMV、订单数、退款率等业务口径，避免同词不同义。</span>
+          </div>
+          <div class="node main">
+            <small>retrieve</small>
+            <strong>权限感知 Schema RAG</strong>
+            <span>先过滤权限，再用 Milvus 召回表、字段、指标说明和 SQL 示例。</span>
+          </div>
+
+          <div class="node wide">
+            <small>linking</small>
+            <strong>Schema Linking 与 JOIN 路径</strong>
+            <span>从候选表字段中构造最小可用上下文，并检查表关系是否完整。</span>
+          </div>
+          <div class="node wide">
+            <small>planning</small>
+            <strong>MySQL 查询规划</strong>
+            <span>判断聚合、明细、分页、图表、时间范围、分区条件和大结果风险。</span>
+          </div>
+          <div class="node wide">
+            <small>sql</small>
+            <strong>SQL 生成</strong>
+            <span>LLM 只基于受控 Schema 和查询计划生成 MySQL SELECT。</span>
+          </div>
+
+          <div class="node wide">
+            <small>policy</small>
+            <strong>AST 安全与权限校验</strong>
+            <span>拦截危险语句、越权字段、敏感列、多语句和缺失限制条件。</span>
+          </div>
+          <div class="node wide">
+            <small>cost</small>
+            <strong>EXPLAIN 成本检查</strong>
+            <span>在千万级表上识别全表扫描、慢查询、高风险 JOIN 和大返回量。</span>
+          </div>
+          <div class="node wide">
+            <small>execute</small>
+            <strong>只读 MySQL 执行</strong>
+            <span>通过只读账号、超时、分页和行数上限执行查询。</span>
+          </div>
+
+          <div class="node final">
+            <small>verify</small>
+            <strong>结果验证与可视化</strong>
+            <span>检查口径、粒度、空结果、数量级和图表点数，返回可追溯结果。</span>
+          </div>
+          <div class="node final">
+            <small>trace</small>
+            <strong>Trace 与评测闭环</strong>
+            <span>记录每个节点输入输出，用评测集证明能力，而不是只展示 Demo。</span>
+          </div>
+        </div>
+
+        <div class="lane" aria-label="底层能力分层">
+          <div class="lane-label">tool layer</div>
+          <div class="lane-body">
+            <div class="tool">
+              <strong>FastAPI</strong>
+              <span>对外提供问数、查询任务、Trace、评测接口。</span>
+            </div>
+            <div class="tool">
+              <strong>MCP Tools</strong>
+              <span>把 Schema 搜索、SQL 校验、Explain、执行封装成受控工具。</span>
+            </div>
+            <div class="tool">
+              <strong>MySQL</strong>
+              <span>真实业务数据、data_agent_meta 元数据、指标、权限、Trace 和 table_relations 事实源。</span>
+            </div>
+            <div class="tool">
+              <strong>Milvus</strong>
+              <span>表字段说明、指标说明、查询案例和可选失败摘要的向量召回层。</span>
+            </div>
+            <div class="tool">
+              <strong>Schema Graph</strong>
+              <span>由 MySQL table_relations 加载到内存，在线计算本次必要 JOIN 路径。</span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </section>
+
+    <section class="page" id="page-2">
+      <header class="page-head">
+        <div>
+          <div class="eyebrow">page 2 / technical detail</div>
+          <h2>分点设计：每个模块都要回答一个技术难题。</h2>
+          <p class="section-lead">
+            第一版保持可实现：真实数据库只做 MySQL；Milvus 只做 RAG 检索层；SQL 只允许 SELECT；分库分表先做规则模拟和设计说明。重点是把 AI 应用开发链路做完整，能用 Trace 和评测支撑面试追问。
+          </p>
+        </div>
+        <a class="page-index" href="#page-1">回流程 ↑</a>
+      </header>
+
+      <div class="module-grid">
+        <article class="module">
+          <div class="module-head">
+            <h3>元数据与指标中心</h3>
+            <span class="badge rule">rules</span>
+          </div>
+          <p class="result-line">结果：MySQL 作为事实源，统一管理表字段、指标口径、表关系、权限、敏感级别和分区字段。</p>
+          <ul class="detail-list">
+            <li><b>解决</b><span>业务指标口径不一致、字段含义不清、Milvus 索引与真实 Schema 不一致。</span></li>
+            <li><b>规则</b><span>指标版本、生效状态、字段存在性、权限策略、表关系必须走确定性查询。</span></li>
+            <li><b>边界</b><span>LLM 不能自己创造指标口径，也不能把向量检索结果当成事实源。</span></li>
+            <li><b>数据</b><span>建议准备 8-12 张业务表、60-120 个字段、10-20 个指标定义用于评测。</span></li>
+          </ul>
+        </article>
+
+        <article class="module">
+          <div class="module-head">
+            <h3>意图理解与澄清</h3>
+            <span class="badge hybrid">hybrid</span>
+          </div>
+          <p class="result-line">结果：把用户问题转成 AnalysisSpec，并判断是否需要 HITL 澄清。</p>
+          <ul class="detail-list">
+            <li><b>解决</b><span>“今天的数据”“最近表现”“高价值用户”等问题缺少指标、时间、维度或口径。</span></li>
+            <li><b>LLM</b><span>负责自然语言解析、多轮改写、意图分类和候选槽位提取。</span></li>
+            <li><b>规则</b><span>关键槽位缺失、指标冲突、时间范围缺失、大结果风险触发澄清。</span></li>
+            <li><b>边界</b><span>模糊问题不能靠模型猜；能改变 SQL 语义的缺口必须显式暴露给用户。</span></li>
+          </ul>
+        </article>
+
+        <article class="module">
+          <div class="module-head">
+            <h3>权限感知 Schema RAG</h3>
+            <span class="badge hybrid">hybrid</span>
+          </div>
+          <p class="result-line">结果：在用户可见范围内，用 Milvus 召回候选表、字段、指标文档和 SQL 示例。</p>
+          <ul class="detail-list">
+            <li><b>解决</b><span>完整 Schema 注入成本高、相似字段干扰、字段幻觉和未授权元数据泄露。</span></li>
+            <li><b>LLM</b><span>可用于候选字段语义判断和召回结果解释，但不决定权限。</span></li>
+            <li><b>规则</b><span>权限过滤必须发生在 Prompt 组装前；字段、表、指标都要回 MySQL 校验。</span></li>
+            <li><b>数据</b><span>评测 Table Recall@K、Column Recall@K、Prompt Token 降幅和未授权召回率。</span></li>
+          </ul>
+        </article>
+
+        <article class="module">
+          <div class="module-head">
+            <h3>Schema Linking 与 JOIN 路径</h3>
+            <span class="badge rule">rules</span>
+          </div>
+          <p class="result-line">结果：从候选 Schema 中得到最小可用上下文，并补全跨表查询所需关系。</p>
+          <ul class="detail-list">
+            <li><b>解决</b><span>只召回相似表会漏掉维表、桥接表、映射表，导致 SQL 无法正确 JOIN。</span></li>
+            <li><b>规则</b><span>基于 table_relations 做关系图搜索，检查 JOIN 路径是否存在和粒度是否合理。</span></li>
+            <li><b>LLM</b><span>可以解释为什么某张表相关，但不能凭空建立不存在的表关系。</span></li>
+            <li><b>边界</b><span>第一版不追求复杂血缘系统，先覆盖常见一对多维表关联。</span></li>
+          </ul>
+        </article>
+
+        <article class="module">
+          <div class="module-head">
+            <h3>MySQL 查询规划</h3>
+            <span class="badge guard">guard</span>
+          </div>
+          <p class="result-line">结果：在 SQL 生成前判断查询类型、时间范围、分区条件、分页和大结果风险。</p>
+          <ul class="detail-list">
+            <li><b>解决</b><span>千万级表上无时间范围、全表排序、大表 JOIN、明细全量返回等资源风险。</span></li>
+            <li><b>规则</b><span>明细查询强制分页；图表限制点数；没有时间范围时澄清或使用受控默认窗口。</span></li>
+            <li><b>LLM</b><span>辅助判断用户想要明细、聚合、图表还是导出。</span></li>
+            <li><b>数据</b><span>建议设置最大返回 1000 行、图表最大 200 点、超时 10-30 秒，均作为待验证参数。</span></li>
+          </ul>
+        </article>
+
+        <article class="module">
+          <div class="module-head">
+            <h3>SQL 生成</h3>
+            <span class="badge llm">llm</span>
+          </div>
+          <p class="result-line">结果：LLM 只基于受控上下文生成 MySQL SELECT，并输出使用的表字段摘要。</p>
+          <ul class="detail-list">
+            <li><b>解决</b><span>自然语言到 SQL 的表达转换，同时避免全库 Schema 注入。</span></li>
+            <li><b>LLM</b><span>生成 SQL、解释字段选择、对可修复错误做有限定向修复。</span></li>
+            <li><b>规则</b><span>SQL 生成后不能直接执行，必须进入 AST Policy Engine。</span></li>
+            <li><b>边界</b><span>第一版只支持 SELECT；不支持 UPDATE、DELETE、DDL 和任意数据库方言。</span></li>
+          </ul>
+        </article>
+
+        <article class="module">
+          <div class="module-head">
+            <h3>SQL Policy Engine</h3>
+            <span class="badge guard">guard</span>
+          </div>
+          <p class="result-line">结果：用 AST 规则和权限表拦截危险 SQL、越权字段、敏感数据和结构绕过。</p>
+          <ul class="detail-list">
+            <li><b>解决</b><span>LLM 生成 SQL 不可信、字符串检查容易被 CTE、UNION、子查询、多语句绕过。</span></li>
+            <li><b>规则</b><span>sqlglot 解析 AST，检查表字段白名单、函数白名单、LIMIT、租户条件和只读语句。</span></li>
+            <li><b>兜底</b><span>只读 MySQL 账号、查询超时、最大结果集限制，防止上层规则漏判。</span></li>
+            <li><b>数据</b><span>评测危险 SQL 拦截率、越权拦截率、正常 SQL 误拦率。</span></li>
+          </ul>
+        </article>
+
+        <article class="module">
+          <div class="module-head">
+            <h3>执行、结果治理与验证</h3>
+            <span class="badge hybrid">hybrid</span>
+          </div>
+          <p class="result-line">结果：只读执行 SQL，返回表格、图表、口径说明和风险提示，不把大结果一次性推给前端。</p>
+          <ul class="detail-list">
+            <li><b>解决</b><span>SQL 能执行但语义错、JOIN 放大、空结果可疑、图表点数过多和数据新鲜度不明。</span></li>
+            <li><b>规则</b><span>校验指标表达式、必要过滤条件、返回粒度、行数、空结果和数量级阈值。</span></li>
+            <li><b>LLM</b><span>只基于查询结果生成简短结论，不允许脱离数据编造业务原因。</span></li>
+            <li><b>边界</b><span>不能证明业务因果，只能证明当前 SQL、口径和数据结果是否可追溯。</span></li>
+          </ul>
+        </article>
+      </div>
+
+      <section class="wide-panel" aria-label="LLM 与规则分工矩阵">
+        <div class="module-head">
+          <h3>LLM 与规则的分工矩阵</h3>
+          <span class="badge hybrid">boundary</span>
+        </div>
+        <table class="matrix">
+          <thead>
+            <tr>
+              <th>事项</th>
+              <th>大模型适合做</th>
+              <th>规则系统必须做</th>
+              <th>技术难题</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>意图理解</td>
+              <td>解析自然语言、多轮改写、提取候选槽位。</td>
+              <td>检查必填槽位、指标冲突、时间范围和大结果风险。</td>
+              <td>模糊问题不能靠模型猜。</td>
+            </tr>
+            <tr>
+              <td>Schema Linking</td>
+              <td>辅助判断候选表字段的语义相关性。</td>
+              <td>权限过滤、字段存在性、JOIN 关系、Schema 版本校验。</td>
+              <td>召回相关不等于 SQL 可用。</td>
+            </tr>
+            <tr>
+              <td>SQL 生成</td>
+              <td>根据受控上下文生成 MySQL SELECT。</td>
+              <td>AST 安全校验、权限校验、LIMIT、EXPLAIN、超时控制。</td>
+              <td>生成结果不能直接信任。</td>
+            </tr>
+            <tr>
+              <td>结果解释</td>
+              <td>把表格和图表转成简短结论。</td>
+              <td>口径、粒度、空结果、数量级、数据新鲜度检查。</td>
+              <td>执行成功不等于可信。</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="wide-panel" aria-label="存储架构与关系图边界">
+        <div class="module-head">
+          <h3>存储架构与关系图边界</h3>
+          <span class="badge rule">storage</span>
+        </div>
+        <table class="matrix">
+          <thead>
+            <tr>
+              <th>组件</th>
+              <th>存储内容</th>
+              <th>为什么这样放</th>
+              <th>不负责什么</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>ecommerce_demo MySQL</td>
+              <td>订单、用户、商品、支付、退款、城市维表等模拟业务数据。</td>
+              <td>真实执行数据库限定 MySQL，便于体现索引、EXPLAIN、只读账号、分页和慢查询控制。</td>
+              <td>不存 Agent 的指标口径、权限策略和 Trace 主数据。</td>
+            </tr>
+            <tr>
+              <td>data_agent_meta MySQL</td>
+              <td>meta_tables、meta_columns、column_aliases、business_terms、metrics、metric_versions、role_permissions、query_trace、query_tasks、eval_cases、eval_results。</td>
+              <td>这些是结构化事实，需要精确查询、版本管理、权限过滤、排序分页和审计，MySQL 比 MongoDB 更适合第一版。</td>
+              <td>不做向量相似度检索。</td>
+            </tr>
+            <tr>
+              <td>table_relations</td>
+              <td>source_table、source_column、target_table、target_column、relation_type、business_meaning、is_active。</td>
+              <td>JOIN 关系是确定性 ER 信息，应该存在 MySQL 元数据中心；在线加载成内存图，用 BFS / 最短路径补全本次必要 JOIN 边。</td>
+              <td>不依赖 Milvus 相似度来判断表能否 JOIN。</td>
+            </tr>
+            <tr>
+              <td>Milvus</td>
+              <td>表文档、字段文档、指标文档、业务术语、查询示例，以及可选的失败案例摘要 embedding。</td>
+              <td>Milvus 只解决语义召回：根据本次 AnalysisSpec 找相关表字段和示例，不作为权限、指标或关系图事实源。</td>
+              <td>不存完整 Trace，不存权限规则，不存指标版本主数据。</td>
+            </tr>
+            <tr>
+              <td>query_trace</td>
+              <td>question、analysis_spec JSON、retrieved_schema JSON、generated_sql、policy_result JSON、explain_result JSON、execution_status、row_count、error_type、final_answer。</td>
+              <td>Trace 有半结构化内容，但 MySQL JSON / TEXT 足够承载；常查字段单独列化，方便按用户、状态、错误类型和时间检索。</td>
+              <td>不为了 Trace 单独引入 MongoDB，避免架构发散。</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="wide-panel" aria-label="第一版项目边界">
+        <div class="module-head">
+          <h3>第一版边界与面试口径</h3>
+          <span class="badge rule">scope</span>
+        </div>
+        <table class="matrix">
+          <thead>
+            <tr>
+              <th>边界</th>
+              <th>第一版做法</th>
+              <th>为什么合理</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>数据库</td>
+              <td>只支持 MySQL，使用只读账号和模拟经营分析库。</td>
+              <td>项目重点是可信问数链路，不是多数据库适配器。</td>
+            </tr>
+            <tr>
+              <td>RAG</td>
+              <td>Milvus 存向量召回材料；MySQL data_agent_meta 存结构化事实、Trace 和 table_relations。</td>
+              <td>语义召回、确定性事实和审计追踪分离，能回答权限、口径、JOIN 与 Trace 追问。</td>
+            </tr>
+            <tr>
+              <td>关系图</td>
+              <td>不做完整 GraphRAG；从 MySQL table_relations 加载内存 Schema Graph，按需补全 JOIN 路径。</td>
+              <td>ER 关系不是相似度问题，确定性图搜索比向量召回更稳，也能减少多余表字段进入 Prompt。</td>
+            </tr>
+            <tr>
+              <td>分库分表</td>
+              <td>先做分片键、时间范围、跨分片风险的规则识别，不做真实中间件。</td>
+              <td>能体现大数据意识，工作量仍符合校招生项目。</td>
+            </tr>
+            <tr>
+              <td>写操作</td>
+              <td>不支持写 SQL，只支持 SELECT。</td>
+              <td>分析 Agent 的核心是可信查询，写操作需要独立审批和回滚链路。</td>
+            </tr>
+            <tr>
+              <td>评测</td>
+              <td>自建 100-200 条评测集，按简单、中等、困难分层统计。</td>
+              <td>避免只展示 Demo，能用数据说明模块效果与边界。</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <div class="closing">
+        面试叙事可以围绕一句话展开：我没有让大模型裸连数据库写 SQL，而是把 LLM 放在受控链路里，用 MySQL 业务库与 data_agent_meta 保存事实源和 Trace，用 Milvus 做语义召回，用内存 Schema Graph 做 JOIN 路径补全，再通过 LangGraph 状态机、MCP 受控工具、AST Policy、EXPLAIN 成本检查和评测闭环共同保证问数过程可控、可追溯、可验证。
+      </div>
+    </section>
+  </main>
+</body>
+</html>

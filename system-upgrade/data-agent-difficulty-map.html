@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DataAgent 项目难点地图</title>
+  <style>
+    :root {
+      --paper: #fbfcfd;
+      --ink: #172033;
+      --muted: #667085;
+      --line: #dfe5ec;
+      --soft-line: #edf1f5;
+      --panel: #ffffff;
+      --blue: #2f6fed;
+      --cyan: #0e9aa7;
+      --mint: #dff7f1;
+      --amber: #b87700;
+      --amber-soft: #fff3d8;
+      --rose: #c65d78;
+      --rose-soft: #fdebf0;
+      --violet: #6a5acd;
+      --violet-soft: #f0edff;
+      --shadow: 0 18px 48px rgba(31, 42, 68, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(47, 111, 237, 0.045) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(47, 111, 237, 0.045) 1px, transparent 1px),
+        var(--paper);
+      background-size: 44px 44px;
+      font-family: Inter, "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      letter-spacing: 0;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .shell {
+      width: min(1180px, calc(100% - 40px));
+      margin: 0 auto;
+    }
+
+    .hero {
+      min-height: 92vh;
+      display: grid;
+      align-items: end;
+      padding: 56px 0 40px;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.12fr) minmax(300px, 0.88fr);
+      gap: 38px;
+      align-items: end;
+    }
+
+    .kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 24px;
+      color: var(--cyan);
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .kicker::before {
+      content: "";
+      width: 38px;
+      height: 2px;
+      background: var(--cyan);
+    }
+
+    h1 {
+      max-width: 820px;
+      margin: 0;
+      font-family: Georgia, "Times New Roman", "Songti SC", serif;
+      font-size: clamp(42px, 7vw, 92px);
+      line-height: 0.98;
+      font-weight: 700;
+    }
+
+    .hero-copy {
+      max-width: 720px;
+      margin: 26px 0 0;
+      color: #435066;
+      font-size: 18px;
+      line-height: 1.85;
+    }
+
+    .scope-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 34px;
+    }
+
+    .scope-pill {
+      padding: 9px 13px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.78);
+      color: #344054;
+      font-size: 13px;
+      font-weight: 650;
+      box-shadow: 0 8px 24px rgba(31, 42, 68, 0.04);
+    }
+
+    .trace-panel {
+      position: relative;
+      padding: 24px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.84);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .trace-panel::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(90deg, transparent 28px, rgba(223, 229, 236, 0.65) 29px, transparent 30px),
+        linear-gradient(180deg, transparent 28px, rgba(223, 229, 236, 0.65) 29px, transparent 30px);
+      background-size: 30px 30px;
+      pointer-events: none;
+    }
+
+    .trace-panel > * {
+      position: relative;
+      z-index: 1;
+    }
+
+    .panel-title {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 20px;
+      color: var(--muted);
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .signal-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .signal {
+      display: grid;
+      grid-template-columns: 92px 1fr;
+      gap: 12px;
+      align-items: start;
+      padding: 14px;
+      border: 1px solid var(--soft-line);
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.9);
+    }
+
+    .signal code {
+      color: var(--blue);
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .signal span {
+      color: #3d475a;
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    .section {
+      padding: 44px 0;
+    }
+
+    .section-head {
+      display: grid;
+      grid-template-columns: 280px minmax(0, 1fr);
+      gap: 34px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .section-label {
+      color: var(--blue);
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 13px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    h2 {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", "Songti SC", serif;
+      font-size: clamp(28px, 4vw, 48px);
+      line-height: 1.08;
+    }
+
+    .section-intro {
+      max-width: 760px;
+      margin: 14px 0 0;
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.8;
+    }
+
+    .question-board {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 16px;
+      margin-top: 22px;
+    }
+
+    .card {
+      grid-column: span 6;
+      min-height: 100%;
+      padding: 22px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.92);
+      box-shadow: 0 14px 34px rgba(31, 42, 68, 0.055);
+    }
+
+    .card.wide {
+      grid-column: span 12;
+    }
+
+    .card.compact {
+      grid-column: span 4;
+    }
+
+    .card-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 16px;
+    }
+
+    h3 {
+      margin: 0;
+      font-size: 21px;
+      line-height: 1.32;
+    }
+
+    .tag {
+      flex: 0 0 auto;
+      padding: 6px 9px;
+      border-radius: 999px;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .tag.schema { color: var(--blue); background: #eaf1ff; }
+    .tag.metric { color: var(--amber); background: var(--amber-soft); }
+    .tag.safety { color: var(--rose); background: var(--rose-soft); }
+    .tag.scale { color: var(--cyan); background: var(--mint); }
+    .tag.eval { color: var(--violet); background: var(--violet-soft); }
+
+    .lead {
+      margin: 0 0 14px;
+      color: #4d5a70;
+      font-size: 15px;
+      line-height: 1.75;
+    }
+
+    .question-list {
+      display: grid;
+      gap: 9px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .question-list li {
+      position: relative;
+      padding-left: 18px;
+      color: #263247;
+      font-size: 14px;
+      line-height: 1.65;
+    }
+
+    .question-list li::before {
+      content: "";
+      position: absolute;
+      top: 10px;
+      left: 0;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--blue);
+    }
+
+    .risk-table {
+      width: 100%;
+      border-collapse: collapse;
+      overflow: hidden;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+
+    .risk-table th,
+    .risk-table td {
+      padding: 15px 14px;
+      border-bottom: 1px solid var(--soft-line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .risk-table th {
+      color: #344054;
+      background: #f6f8fb;
+      font-size: 12px;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+    }
+
+    .risk-table td {
+      color: #344054;
+      line-height: 1.7;
+      background: #fff;
+    }
+
+    .risk-table tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .interview-wall {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 22px;
+    }
+
+    .interview-item {
+      min-height: 136px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: 0 12px 28px rgba(31, 42, 68, 0.05);
+    }
+
+    .interview-item strong {
+      display: block;
+      margin-bottom: 10px;
+      color: var(--blue);
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+    }
+
+    .interview-item p {
+      margin: 0;
+      color: #2b364a;
+      font-size: 14px;
+      line-height: 1.65;
+    }
+
+    .footer-note {
+      margin: 48px 0 70px;
+      padding: 24px;
+      border: 1px dashed #c9d3df;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.72);
+      color: #4b576b;
+      font-size: 15px;
+      line-height: 1.8;
+    }
+
+    @media (max-width: 920px) {
+      .hero {
+        min-height: auto;
+      }
+
+      .hero-grid,
+      .section-head {
+        grid-template-columns: 1fr;
+      }
+
+      .card,
+      .card.compact {
+        grid-column: span 12;
+      }
+
+      .interview-wall {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .shell {
+        width: min(100% - 28px, 1180px);
+      }
+
+      .hero {
+        padding-top: 34px;
+      }
+
+      .trace-panel,
+      .card {
+        padding: 18px;
+      }
+
+      .signal {
+        grid-template-columns: 1fr;
+      }
+
+      .card-head {
+        display: grid;
+      }
+
+      .risk-table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <div class="hero-grid">
+        <div>
+          <div class="kicker">DataAgent / difficulty map</div>
+          <h1>先把项目里的硬问题摊开。</h1>
+          <p class="hero-copy">
+            这份页面只总结 DataAgent 在真实实现前需要面对的困难：大规模 Schema、业务指标口径、SQL 安全、千万级 MySQL 查询、多轮上下文、结果可信与评测闭环。这里不写解决方法，后续每一个问题都可以反推代码设计、实验设计和简历亮点。
+          </p>
+          <div class="scope-bar" aria-label="项目边界">
+            <span class="scope-pill">校招生简历项目</span>
+            <span class="scope-pill">AI 应用开发</span>
+            <span class="scope-pill">MySQL 数据源</span>
+            <span class="scope-pill">Milvus 检索层</span>
+            <span class="scope-pill">千万级数据意识</span>
+          </div>
+        </div>
+
+        <aside class="trace-panel" aria-label="核心难点速览">
+          <div class="panel-title">
+            <span>pressure points</span>
+            <span>v0.1</span>
+          </div>
+          <div class="signal-list">
+            <div class="signal">
+              <code>Schema</code>
+              <span>表字段规模变大后，模型不是“不够聪明”，而是上下文、召回、字段语义和 JOIN 路径都会同时出问题。</span>
+            </div>
+            <div class="signal">
+              <code>Metric</code>
+              <span>用户问的是业务概念，数据库存的是物理字段；同一个指标的口径差异会直接改变 SQL 结果。</span>
+            </div>
+            <div class="signal">
+              <code>Scale</code>
+              <span>千万级 MySQL 表不能随便扫、随便排、随便返回；查询成本和结果集治理必须提前进入设计。</span>
+            </div>
+            <div class="signal">
+              <code>Trust</code>
+              <span>SQL 能执行不等于结果可信，评测也不能只靠一次漂亮 Demo。</span>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="section" id="core">
+      <div class="section-head">
+        <div class="section-label">core questions</div>
+        <div>
+          <h2>面试官最可能抓住的主线</h2>
+          <p class="section-intro">
+            这些不是功能清单，而是项目能不能站住的根问题。后续写代码时，每个模块都应该能回应其中至少一个问题。
+          </p>
+        </div>
+      </div>
+
+      <div class="question-board">
+        <article class="card compact">
+          <div class="card-head">
+            <h3>大规模 Schema 下怎么找对表和字段？</h3>
+            <span class="tag schema">SCHEMA</span>
+          </div>
+          <p class="lead">表多、字段多、命名相似时，错误往往发生在 SQL 生成之前。</p>
+          <ul class="question-list">
+            <li>完整 Schema 无法全部注入 Prompt，Token、延迟和干扰都会上升。</li>
+            <li>相似字段容易混淆，例如金额、状态、时间字段在多张表里重复出现。</li>
+            <li>只找语义相似表，可能漏掉 JOIN 必需的桥接表。</li>
+            <li>字段注释缺失或不准确时，模型可能根据字段名猜测业务含义。</li>
+          </ul>
+        </article>
+
+        <article class="card compact">
+          <div class="card-head">
+            <h3>业务指标口径怎么保证一致？</h3>
+            <span class="tag metric">METRIC</span>
+          </div>
+          <p class="lead">用户说的是 GMV、退款率、活跃用户；数据库里是字段、枚举值和过滤条件。</p>
+          <ul class="question-list">
+            <li>同一个指标可能存在多个口径版本，结果差异会很大。</li>
+            <li>时间语义可能不明确：下单时间、支付时间、退款时间都可能合理。</li>
+            <li>指标可能依赖隐含过滤条件，例如取消订单、测试订单、退款订单。</li>
+            <li>用户问题缺少关键槽位时，直接猜测会让结果不可解释。</li>
+          </ul>
+        </article>
+
+        <article class="card compact">
+          <div class="card-head">
+            <h3>SQL 安全和权限怎么做？</h3>
+            <span class="tag safety">SAFETY</span>
+          </div>
+          <p class="lead">LLM 生成的 SQL 默认不可信，不能把“能执行”当成安全边界。</p>
+          <ul class="question-list">
+            <li>可能生成 DDL、DML、多语句、危险函数或高风险子查询。</li>
+            <li>未授权表、字段、敏感列可能在 Prompt 阶段就已经泄露。</li>
+            <li>列级、行级、租户级权限会影响可见 Schema 和 SQL 条件。</li>
+            <li>CTE、UNION、子查询、注释等结构可能绕过浅层字符串检查。</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <section class="section" id="schema">
+      <div class="section-head">
+        <div class="section-label">schema linking</div>
+        <div>
+          <h2>Schema Linking 的真实困难</h2>
+          <p class="section-intro">
+            这个模块最能体现 AI 应用开发能力。难点不是“召回 TopK”，而是能否在有限上下文里找到一组足够完成查询的表、字段、关系和业务解释。
+          </p>
+        </div>
+      </div>
+
+      <div class="question-board">
+        <article class="card">
+          <div class="card-head">
+            <h3>字段规模与字段幻觉</h3>
+            <span class="tag schema">FIELD</span>
+          </div>
+          <ul class="question-list">
+            <li>字段数量过大时，无法把所有字段名、类型、注释、枚举值完整注入。</li>
+            <li>模型面对 `amount`、`pay_amount`、`actual_amount`、`refund_amount` 这类相似字段容易误选。</li>
+            <li>字段名短、缩写多、英文拼音混用时，语义匹配会变得不稳定。</li>
+            <li>字段说明和真实业务含义可能不一致，召回正确字段仍可能生成错误 SQL。</li>
+          </ul>
+        </article>
+
+        <article class="card">
+          <div class="card-head">
+            <h3>表召回率与跨表问题</h3>
+            <span class="tag schema">JOIN</span>
+          </div>
+          <ul class="question-list">
+            <li>用户问题可能涉及订单、用户、商品、地区、支付等多个业务域。</li>
+            <li>语义最相似的表不一定是最终 SQL 需要的表。</li>
+            <li>JOIN 桥接表、维表、映射表经常不出现在用户问题里。</li>
+            <li>多表 JOIN 可能导致粒度变化和重复计数，召回阶段很难只靠相似度判断。</li>
+          </ul>
+        </article>
+
+        <article class="card">
+          <div class="card-head">
+            <h3>Milvus RAG 的边界</h3>
+            <span class="tag schema">RAG</span>
+          </div>
+          <ul class="question-list">
+            <li>Milvus 适合召回表说明、字段说明、指标说明和历史案例，但不适合作为权限和指标事实源。</li>
+            <li>向量相似度不能回答“用户是否有权访问某字段”这类确定性问题。</li>
+            <li>如果元数据变更后向量索引没有同步，召回结果会引用过期 Schema。</li>
+            <li>检索结果进入 Prompt 前，需要考虑是否包含未授权或敏感元数据。</li>
+          </ul>
+        </article>
+
+        <article class="card">
+          <div class="card-head">
+            <h3>结构化元数据一致性</h3>
+            <span class="tag metric">META</span>
+          </div>
+          <ul class="question-list">
+            <li>MySQL 中的表结构、字段说明、指标定义、权限规则和 Milvus 中的向量文档可能不一致。</li>
+            <li>指标口径、字段注释、表关系存在版本变化时，需要知道当前查询使用的是哪个版本。</li>
+            <li>同一个字段可能在不同业务域有不同含义，简单文档切片会丢失上下文。</li>
+            <li>元数据质量差时，Agent 的错误会表现为 SQL 错，但根因可能是数据字典错。</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <section class="section" id="mysql-scale">
+      <div class="section-head">
+        <div class="section-label">mysql at scale</div>
+        <div>
+          <h2>千万级 MySQL 数据下的新问题</h2>
+          <p class="section-intro">
+            数据源限定为 MySQL 是合理的，但项目仍然要体现大数据意识：不能把数据库当成无限算力，也不能把前端当成无限容器。
+          </p>
+        </div>
+      </div>
+
+      <div class="question-board">
+        <article class="card">
+          <div class="card-head">
+            <h3>查询成本不可控</h3>
+            <span class="tag scale">COST</span>
+          </div>
+          <ul class="question-list">
+            <li>用户没有给时间范围时，SQL 可能扫描整张千万级表。</li>
+            <li>排序、模糊匹配、大表 JOIN、去重聚合都可能造成慢查询。</li>
+            <li>SQL 语法正确不代表执行计划可接受。</li>
+            <li>查询资源失控会影响真实业务库或只读副本稳定性。</li>
+          </ul>
+        </article>
+
+        <article class="card">
+          <div class="card-head">
+            <h3>结果集不能全部返回</h3>
+            <span class="tag scale">RESULT</span>
+          </div>
+          <ul class="question-list">
+            <li>明细查询可能返回几十万到几百万行，前端无法一次性展示。</li>
+            <li>图表不适合承载过多点位或过多类别。</li>
+            <li>用户想看“全部数据”和系统只能返回“有限结果”之间存在产品语义冲突。</li>
+            <li>导出、分页、聚合、抽样都会影响用户对结果完整性的理解。</li>
+          </ul>
+        </article>
+
+        <article class="card">
+          <div class="card-head">
+            <h3>分区、分库分表与路由</h3>
+            <span class="tag scale">SHARD</span>
+          </div>
+          <ul class="question-list">
+            <li>MySQL 可能按时间、租户、用户或订单维度拆分数据。</li>
+            <li>用户问题不一定包含分片键，查询可能退化为多分片扫描。</li>
+            <li>跨库 JOIN 和跨分片聚合会让单条 SQL 执行模型变得不成立。</li>
+            <li>业务库、只读副本、分析库之间的数据延迟和一致性需要被用户感知。</li>
+          </ul>
+        </article>
+
+        <article class="card">
+          <div class="card-head">
+            <h3>数据层选择困难</h3>
+            <span class="tag metric">LAYER</span>
+          </div>
+          <ul class="question-list">
+            <li>同一指标可能从明细表、汇总表、物化结果或指标表得到。</li>
+            <li>明细表灵活但成本高，汇总表快但维度不一定满足问题。</li>
+            <li>实时数据和离线数据可能同时存在，时效性差异会影响结论。</li>
+            <li>数据表产出延迟、分区缺失、上游任务失败都可能让查询结果失真。</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <section class="section" id="dialog-trust">
+      <div class="section-head">
+        <div class="section-label">dialog & trust</div>
+        <div>
+          <h2>多轮、可信与追溯问题</h2>
+          <p class="section-intro">
+            真实用户不会每次都把完整查询条件说清楚。DataAgent 还需要面对上下文继承、模糊表达、结果解释和可追溯性。
+          </p>
+        </div>
+      </div>
+
+      <div class="question-board">
+        <article class="card">
+          <div class="card-head">
+            <h3>用户问题模糊</h3>
+            <span class="tag metric">INTENT</span>
+          </div>
+          <ul class="question-list">
+            <li>用户可能只说“今天的数据”“最近表现”“高价值用户”，缺少指标、时间、维度或过滤条件。</li>
+            <li>所有模糊点都追问会打断体验，不追问又可能生成错误 SQL。</li>
+            <li>同一个词在不同业务域含义不同，意图路由本身也可能出错。</li>
+            <li>用户表达可能混合分析、导出、画图、解释原因等多种意图。</li>
+          </ul>
+        </article>
+
+        <article class="card">
+          <div class="card-head">
+            <h3>历史对话污染</h3>
+            <span class="tag metric">MEMORY</span>
+          </div>
+          <ul class="question-list">
+            <li>“用今天的数据做个图表”需要继承上一轮查询状态，而不是重新理解全部问题。</li>
+            <li>“换成上周”“按城市拆一下”可能是覆盖旧条件，也可能是追加新维度。</li>
+            <li>上一轮 SQL 错误时，后续对话可能继续继承错误状态。</li>
+            <li>历史上下文过长时，完整聊天记录无法一直注入模型。</li>
+          </ul>
+        </article>
+
+        <article class="card wide">
+          <div class="card-head">
+            <h3>执行成功不等于结果可信</h3>
+            <span class="tag eval">TRUST</span>
+          </div>
+          <table class="risk-table" aria-label="结果可信风险表">
+            <thead>
+              <tr>
+                <th>风险类型</th>
+                <th>需要考虑的问题</th>
+                <th>面试官可能追问</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>语义错误</td>
+                <td>时间字段、指标口径、过滤条件、聚合粒度只要错一个，SQL 仍然可能正常执行。</td>
+                <td>你怎么证明结果符合用户真正的问题？</td>
+              </tr>
+              <tr>
+                <td>JOIN 放大</td>
+                <td>一对多、多对多关系可能导致金额、订单数、用户数重复计算。</td>
+                <td>为什么结果数量级看起来合理也可能是错的？</td>
+              </tr>
+              <tr>
+                <td>空结果</td>
+                <td>空结果可能是真没数据，也可能是字段映射、时间范围、枚举值或权限过滤错误。</td>
+                <td>用户看到空表时，系统应该如何判断原因？</td>
+              </tr>
+              <tr>
+                <td>数据新鲜度</td>
+                <td>今天分区未产出、上游任务延迟、汇总表未刷新都会影响结论。</td>
+                <td>结果到底代表实时数据、T+1 数据，还是缓存数据？</td>
+              </tr>
+            </tbody>
+          </table>
+        </article>
+      </div>
+    </section>
+
+    <section class="section" id="evaluation">
+      <div class="section-head">
+        <div class="section-label">evaluation</div>
+        <div>
+          <h2>不能只展示 Demo，还要能被评测</h2>
+          <p class="section-intro">
+            这个项目最终能不能说服面试官，关键不是“跑通一个例子”，而是能否构造失败场景、拆解错误来源，并用指标说明系统能力边界。
+          </p>
+        </div>
+      </div>
+
+      <div class="question-board">
+        <article class="card">
+          <div class="card-head">
+            <h3>评测集覆盖面</h3>
+            <span class="tag eval">DATASET</span>
+          </div>
+          <ul class="question-list">
+            <li>只覆盖单表查询会让项目看起来像基础 Demo。</li>
+            <li>多表 JOIN、指标歧义、多轮追问、权限攻击、慢查询、大结果集都需要样本。</li>
+            <li>简单、中等、困难问题需要分开统计，否则平均值会掩盖复杂问题表现。</li>
+            <li>安全类问题既要看拦截率，也要看正常问题是否被误拦。</li>
+          </ul>
+        </article>
+
+        <article class="card">
+          <div class="card-head">
+            <h3>错误归因困难</h3>
+            <span class="tag eval">TRACE</span>
+          </div>
+          <ul class="question-list">
+            <li>最终 SQL 错了，根因可能是意图解析、Schema 召回、指标口径、SQL 生成或权限规则。</li>
+            <li>只看最终结果，无法知道应该优化哪个模块。</li>
+            <li>两条 SQL 语法不同但结果等价时，评测不能只做字符串匹配。</li>
+            <li>修复链路可能掩盖前序错误，使问题归因更复杂。</li>
+          </ul>
+        </article>
+
+        <article class="card wide">
+          <div class="card-head">
+            <h3>需要提前想清楚的指标</h3>
+            <span class="tag eval">METRICS</span>
+          </div>
+          <table class="risk-table" aria-label="评测指标表">
+            <thead>
+              <tr>
+                <th>评测维度</th>
+                <th>需要衡量的问题</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>业务理解</td>
+                <td>指标、维度、时间范围、过滤条件、排序、限制条数是否被正确识别。</td>
+              </tr>
+              <tr>
+                <td>Schema Linking</td>
+                <td>目标表、目标字段、JOIN 路径、字段解释是否被正确召回。</td>
+              </tr>
+              <tr>
+                <td>SQL 正确性</td>
+                <td>SQL 是否能执行，执行结果是否与标准答案语义一致。</td>
+              </tr>
+              <tr>
+                <td>安全权限</td>
+                <td>危险 SQL、越权访问、敏感字段泄露、高成本查询是否被识别。</td>
+              </tr>
+              <tr>
+                <td>大结果治理</td>
+                <td>返回行数、图表点数、分页、导出和查询耗时是否处于可接受范围。</td>
+              </tr>
+              <tr>
+                <td>成本性能</td>
+                <td>Prompt Token、LLM 调用次数、P50/P95 延迟、SQL 执行时间是否可解释。</td>
+              </tr>
+            </tbody>
+          </table>
+        </article>
+      </div>
+    </section>
+
+    <section class="section" id="interview">
+      <div class="section-head">
+        <div class="section-label">interview prompts</div>
+        <div>
+          <h2>后续实现时要能回答的问题</h2>
+          <p class="section-intro">
+            下面这些问题可以作为开发检查清单。每完成一个模块，都回头问自己：如果面试官追到这里，我有没有代码、日志、实验或边界说明可以支撑？
+          </p>
+        </div>
+      </div>
+
+      <div class="interview-wall">
+        <div class="interview-item">
+          <strong>Q01</strong>
+          <p>为什么这个项目不是普通 Text-to-SQL？真正的技术难点在哪里？</p>
+        </div>
+        <div class="interview-item">
+          <strong>Q02</strong>
+          <p>为什么不能把完整 Schema 全部交给模型？</p>
+        </div>
+        <div class="interview-item">
+          <strong>Q03</strong>
+          <p>纯向量召回为什么可能漏掉正确表或 JOIN 路径？</p>
+        </div>
+        <div class="interview-item">
+          <strong>Q04</strong>
+          <p>业务指标口径发生冲突时，系统怎么避免直接猜？</p>
+        </div>
+        <div class="interview-item">
+          <strong>Q05</strong>
+          <p>权限过滤为什么不能只放在 SQL 执行前？</p>
+        </div>
+        <div class="interview-item">
+          <strong>Q06</strong>
+          <p>千万级表上，SQL 能执行但代价很高时，你怎么定义风险？</p>
+        </div>
+        <div class="interview-item">
+          <strong>Q07</strong>
+          <p>大结果集不能全部返回前端时，用户体验和结果完整性如何权衡？</p>
+        </div>
+        <div class="interview-item">
+          <strong>Q08</strong>
+          <p>SQL 执行成功后，为什么结果仍然可能不可信？</p>
+        </div>
+        <div class="interview-item">
+          <strong>Q09</strong>
+          <p>你的评测如何覆盖歧义、多轮、安全、慢查询和大结果场景？</p>
+        </div>
+      </div>
+
+      <div class="footer-note">
+        当前页面只记录“必须面对的问题”。后续实现时，可以把每一类问题拆成一个最小可验证模块：先做真实代码，再补充实验指标，最后再把验证过的能力写进简历。
+      </div>
+    </section>
+  </main>
+</body>
+</html>
